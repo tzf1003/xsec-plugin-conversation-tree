@@ -46,6 +46,12 @@ function optionalString(value, field) {
   return value;
 }
 
+function optionalBoolean(value, field, fallback) {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value !== "boolean") throw new Error(`conversation_tree_invalid_${field}`);
+  return value;
+}
+
 function referenceString(reference, field) {
   const value = optionalString(reference[field], `reference_${field}`);
   if (!value) throw new Error(`conversation_tree_invalid_reference_${field}`);
@@ -72,6 +78,8 @@ export function parseContext(value) {
     throw new Error("conversation_tree_invalid_context");
   }
   const context = value ?? {};
+  const truncated = optionalBoolean(context.truncated, "truncated", false);
+  const visible = optionalBoolean(context.visible, "visible", true);
   const workspace = optionalRecord(context.workspace, "workspace");
   const session = optionalRecord(workspace?.session, "session");
   const { tree, treeHash } = parseProjection(session);
@@ -86,8 +94,8 @@ export function parseContext(value) {
     tree,
     treeHash,
     sessionId,
-    truncated: context.truncated === true,
-    visible: context.visible !== false,
+    truncated,
+    visible,
   };
 }
 

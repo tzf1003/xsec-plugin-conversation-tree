@@ -47,6 +47,14 @@ test("malformed pending-interaction containers block navigation", () => {
   }
 });
 
+test("visibility and truncation flags must be booleans when present", () => {
+  assert.throws(() => parseContext({ ...context(projection), visible: "false" }), /invalid_visible/);
+  assert.throws(() => parseContext({ ...context(projection), truncated: "true" }), /invalid_truncated/);
+  const mounted = parseMountContext({ ...context(projection), visible: "false" });
+  assert.equal(mounted.visible, false);
+  assert.match(mounted.error, /invalid_visible/);
+});
+
 test("snapshot capability explicitly blocks tree reads", () => {
   assert.equal(supportsTreeSnapshot(parseContext(context(projection, { snapshot: false }))), false);
 });
