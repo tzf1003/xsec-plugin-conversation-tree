@@ -94,6 +94,7 @@ export function parseContext(value) {
 export function sourceState(context, hasLoadedTree = false) {
   if (context.tree) return { availability: "cached", label: "缓存" };
   if (hasLoadedTree) return { availability: "ready", label: "已读取" };
+  if (!context.sessionId) return { availability: "missing_session", label: "无会话" };
   if (!supportsTreeSnapshot(context)) {
     return { availability: "unsupported", label: "不可用" };
   }
@@ -102,6 +103,10 @@ export function sourceState(context, hasLoadedTree = false) {
 
 export function supportsTreeSnapshot(context) {
   return context.session?.tree_capability?.snapshot !== false;
+}
+
+export function canReadTree(context) {
+  return Boolean(context.sessionId) && supportsTreeSnapshot(context);
 }
 
 export function navigationBlock(context, tree, treeHash) {

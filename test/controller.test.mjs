@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ConversationTreeController } from "../src/controller.js";
-import { parseContext, sourceState } from "../src/context.js";
+import { canReadTree, parseContext, sourceState } from "../src/context.js";
 import { context, message, tree } from "./fixtures.mjs";
 
 const projection = tree([message("root", { active: true })], { activeLeafId: "root" });
@@ -76,4 +76,25 @@ test("unsupported snapshots cannot reach the host read boundary", async () => {
   controller.render = () => null;
   await controller.load();
   assert.equal(requests, 0);
+});
+
+test("an unbound workspace cannot reach the host read boundary", async () => {
+  let requests = 0;
+  const parsed = parseContext({ visible: true, workspace: {} });
+  const controller = new ConversationTreeController({ request: async () => { requests += 1; } });
+  controller.state = stateFor(parsed, { loading: false });
+  controller.render = () => null;
+  assert.equal(canReadTree(parsed), false);
+  await controller.load();
+  assert.equal(requests, 0);
+});
+
+test("an unbound workspace clears a previously loaded snapshot", () => {
+  const controller = new ConversationTreeController({});
+  controller.state = stateFor(parseContext(context(projection)), { loadedTree: true, loading: false });
+  controller.render = () => null;
+  controller.interactions.resetView = () => {};
+  controller.updateContext({ visible: true, workspace: {} });
+  assert.equal(controller.state.tree, null);
+  assert.equal(controller.state.loadedTree, false);
 });

@@ -8,8 +8,8 @@ const READ_STATUS_LABELS = {
   unverifiable: "不可核验",
 };
 
-export function canStartRead({ disposed, loading, navigating, snapshotSupported, visible }) {
-  return !disposed && !loading && !navigating && snapshotSupported && visible;
+export function canStartRead({ disposed, loading, navigating, readSupported, visible }) {
+  return !disposed && !loading && !navigating && readSupported && visible;
 }
 
 export function canStartNavigation({ disposed, loading, navigating, visible }) {
@@ -50,13 +50,13 @@ export function contextFailurePatch({ context, raw, message }) {
   };
 }
 
-export function readResponsePatch(response) {
+export function readResponsePatch(response, expectedSessionId) {
   if (!response || typeof response !== "object" || typeof response.status !== "string") {
     throw new Error("conversation_tree_invalid_read_response");
   }
   if (response.status === "ready") {
     return {
-      tree: validateTree(response.tree),
+      tree: validateResponseTree(response.tree, expectedSessionId),
       treeHash: null,
       loadedTree: true,
       source: { availability: "ready", label: "已读取" },
@@ -70,4 +70,12 @@ export function readResponsePatch(response) {
     source: { availability: response.status, label },
     notice: `对话树暂不可读：${label}`,
   };
+}
+
+export function validateResponseTree(value, expectedSessionId) {
+  const tree = validateTree(value);
+  if (!expectedSessionId || tree.sessionId !== expectedSessionId) {
+    throw new Error("conversation_tree_response_session_mismatch");
+  }
+  return tree;
 }

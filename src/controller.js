@@ -1,5 +1,5 @@
-import { DEFAULT_SCALE, validateTree } from "./core.js";
-import { isHiddenContext, parseContext, parseMountContext, sourceState, supportsTreeSnapshot } from "./context.js";
+import { DEFAULT_SCALE } from "./core.js";
+import { canReadTree, isHiddenContext, parseContext, parseMountContext, sourceState } from "./context.js";
 import {
   canStartNavigation,
   canStartRead,
@@ -8,6 +8,7 @@ import {
   readResponsePatch,
   requestAuthorityRevision,
   treeViewRevision,
+  validateResponseTree,
 } from "./controller-state.js";
 import { ConversationTreeInteractions } from "./interactions.js";
 import { graphModel, selectedModel } from "./model.js";
@@ -155,6 +156,8 @@ export class ConversationTreeController {
       Object.assign(this.state, { tree: context.tree, treeHash: context.treeHash, loadedTree: false, error: null });
     } else if (context.truncated) {
       this.state.treeHash = null;
+    } else if (!context.sessionId) {
+      Object.assign(this.state, { tree: null, treeHash: null, loadedTree: false, selectedId: null });
     } else if (!this.state.loadedTree) {
       this.state.tree = null;
       this.state.treeHash = null;
@@ -175,7 +178,7 @@ export class ConversationTreeController {
       disposed: this.disposed,
       loading: this.state.loading,
       navigating: this.state.navigating,
-      snapshotSupported: supportsTreeSnapshot(this.state.context),
+      readSupported: canReadTree(this.state.context),
       visible: this.state.context.visible,
     })) return;
     const fence = this.requestFence();
@@ -195,7 +198,7 @@ export class ConversationTreeController {
   }
 
   acceptReadResponse(response) {
-    Object.assign(this.state, readResponsePatch(response));
+    Object.assign(this.state, readResponsePatch(response, this.state.context.sessionId));
   }
 
   async navigate(entryId) {
@@ -242,7 +245,7 @@ export class ConversationTreeController {
 
   acceptNavigation(response, entryId) {
     Object.assign(this.state, {
-      tree: validateTree(response?.result),
+      tree: validateResponseTree(response?.result, this.state.context.sessionId),
       treeHash: null,
       loadedTree: true,
       source: { availability: "ready", label: "已切换" },

@@ -61,14 +61,17 @@ function resolvedParent(message, ids) {
 }
 
 function assertAcyclic(parentById) {
+  const complete = new Set();
   for (const entryId of parentById.keys()) {
-    const seen = new Set([entryId]);
-    let current = parentById.get(entryId);
-    while (current) {
-      if (seen.has(current)) throw new Error(`conversation_tree_cycle: ${entryId}`);
-      seen.add(current);
+    if (complete.has(entryId)) continue;
+    const visiting = new Set();
+    let current = entryId;
+    while (current && !complete.has(current)) {
+      if (visiting.has(current)) throw new Error(`conversation_tree_cycle: ${current}`);
+      visiting.add(current);
       current = parentById.get(current);
     }
+    for (const visited of visiting) complete.add(visited);
   }
 }
 
@@ -146,6 +149,24 @@ export function visibleMessages(messages, showAgentMessages) {
     const parentId = nearestUserParent(message, parents, byId);
     return { ...message, parentId, branchGroupId: parentId };
   });
+}
+
+function resolveDepth(entryId, parents, depths) {
+  const trail = [];
+  let current = entryId;
+  while (current && !depths.has(current)) {
+    trail.push(current);
+    current = parents.get(current) ?? null;
+  }
+  let depth = current ? depths.get(current) : 0;
+  while (trail.length) depths.set(trail.pop(), ++depth);
+  return depths.get(entryId);
+}
+
+export function nodeDepths(messages, parents = parentMap(messages)) {
+  const depths = new Map();
+  for (const message of messages) resolveDepth(message.entryId, parents, depths);
+  return depths;
 }
 
 export function preferredSelection(messages, visible, leafId) {
@@ -244,7 +265,7 @@ export function focusPath(viewport, activePoint, pathPoints) {
   ));
   return {
     scale,
-    x: viewport.width / 2 - (activePoint.x + NODE_WIDTH / 2) * scale,
+    x: viewport.width / 2 - ((minX + maxX) / 2) * scale,
     y: viewport.height - BOTTOM_SAFE_AREA - activeBottom * scale,
   };
 }

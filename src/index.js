@@ -4,6 +4,7 @@ export {
   focusPath,
   layoutTree,
   matchesQuery,
+  nodeDepths,
   panView,
   parentMap,
   preferredSelection,

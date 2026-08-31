@@ -8,17 +8,18 @@ import {
   readResponsePatch,
   requestAuthorityRevision,
   treeViewRevision,
+  validateResponseTree,
 } from "../src/controller-state.js";
 import { message, tree } from "./fixtures.mjs";
 
 test("hidden context cannot start a tree read", () => {
-  assert.equal(canStartRead({ disposed: false, loading: false, navigating: false, snapshotSupported: true, visible: false }), false);
-  assert.equal(canStartRead({ disposed: false, loading: false, navigating: false, snapshotSupported: true, visible: true }), true);
+  assert.equal(canStartRead({ disposed: false, loading: false, navigating: false, readSupported: true, visible: false }), false);
+  assert.equal(canStartRead({ disposed: false, loading: false, navigating: false, readSupported: true, visible: true }), true);
 });
 
 test("reads and navigation cannot overlap", () => {
-  assert.equal(canStartRead({ disposed: false, loading: false, navigating: true, snapshotSupported: true, visible: true }), false);
-  assert.equal(canStartRead({ disposed: false, loading: false, navigating: false, snapshotSupported: false, visible: true }), false);
+  assert.equal(canStartRead({ disposed: false, loading: false, navigating: true, readSupported: true, visible: true }), false);
+  assert.equal(canStartRead({ disposed: false, loading: false, navigating: false, readSupported: false, visible: true }), false);
   assert.equal(canStartNavigation({ disposed: false, loading: true, navigating: false, visible: true }), false);
   assert.equal(canStartNavigation({ disposed: false, loading: false, navigating: false, visible: true }), true);
 });
@@ -76,8 +77,13 @@ test("non-ready reads revoke the previous authoritative hash", () => {
 test("explicit ready reads stay browse-only until context publishes a hash", () => {
   const patch = readResponsePatch({ status: "ready", tree: tree([
     message("root", { active: true }),
-  ], { activeLeafId: "root" }) });
+  ], { activeLeafId: "root" }) }, "session-1");
   assert.equal(patch.treeHash, null);
   assert.equal(patch.loadedTree, true);
   assert.equal(patch.tree.activeLeafId, "root");
+});
+
+test("host responses must match the bound session", () => {
+  assert.throws(() => validateResponseTree(tree([], { sessionId: "session-2" }), "session-1"), /response_session_mismatch/);
+  assert.throws(() => validateResponseTree(tree([], { sessionId: "session-1" }), null), /response_session_mismatch/);
 });

@@ -3,6 +3,7 @@ import {
   activePath,
   layoutTree,
   matchesQuery,
+  nodeDepths,
   preferredSelection,
   treePath,
   visibleMessages,
@@ -22,12 +23,13 @@ export function graphModel(state) {
     ? state.selectedId
     : preferredSelection(messages, visible, leafId);
   const layout = layoutTree(visible);
+  const depths = nodeDepths(visible, layout.parentById);
   const positioned = visible.flatMap((message) => {
     const point = layout.positions.get(message.entryId);
     return point ? [{ message, ...point }] : [];
   });
   const positions = new Map(positioned.map((item) => [item.message.entryId, item]));
-  return { messages, leafId, active, activeIds, visible, selectedId, layout, positioned, positions };
+  return { messages, leafId, active, activeIds, visible, selectedId, layout, depths, positioned, positions };
 }
 
 export function selectedModel(state, graph) {

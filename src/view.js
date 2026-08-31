@@ -1,5 +1,5 @@
-import { MAX_SCALE, MIN_SCALE, NODE_HEIGHT, NODE_WIDTH, matchesQuery, treePath } from "./core.js";
-import { supportsTreeSnapshot } from "./context.js";
+import { MAX_SCALE, MIN_SCALE, NODE_HEIGHT, NODE_WIDTH, matchesQuery } from "./core.js";
+import { canReadTree } from "./context.js";
 import { button, displayValue, element, factList, formatTime, shortText, svgElement } from "./elements.js";
 
 const MIN_STAGE_WIDTH = 520;
@@ -24,7 +24,7 @@ function renderNotice(controls, state) {
 function renderHeader(controls, state) {
   controls.badge.textContent = state.source.label;
   controls.badge.className = `ct-badge is-${state.source.availability}`;
-  controls.refresh.disabled = state.loading || state.navigating || !supportsTreeSnapshot(state.context) || !state.context.visible;
+  controls.refresh.disabled = state.loading || state.navigating || !canReadTree(state.context) || !state.context.visible;
   controls.refresh.textContent = state.loading ? "◌" : "↻";
   controls.refresh.setAttribute("aria-busy", String(state.loading));
   controls.search.value = state.query;
@@ -39,6 +39,7 @@ export function emptyContent(state, graph) {
   if (state.source.availability === "unsupported") {
     return ["当前 Provider 不支持对话树", state.context.session?.tree_capability?.reason ?? "宿主明确报告该会话不支持消息树快照。", false];
   }
+  if (state.source.availability === "missing_session") return ["当前未绑定会话", "打开或选择一个会话后可读取对话树。", false];
   if (graph && !graph.messages.length) return ["当前对话树没有消息节点", "宿主返回了一个有效的空对话树快照。", false];
   if (graph && !graph.visible.length) return ["当前范围没有可见节点", "可调整范围或开启“显示 Agent 消息”查看其他节点。", false];
   return ["尚未缓存对话树", "加载完整树是显式操作，可能恢复当前会话的本地运行时。", true];
@@ -49,7 +50,7 @@ function renderEmpty(controls, state, graph) {
   controls.emptyTitle.textContent = title;
   controls.emptyDetail.textContent = detail;
   setHidden(controls.load, !canLoad);
-  controls.load.disabled = state.loading || state.navigating || !supportsTreeSnapshot(state.context) || !state.context.visible;
+  controls.load.disabled = state.loading || state.navigating || !canReadTree(state.context) || !state.context.visible;
   setHidden(controls.empty, Boolean(graph?.visible.length));
 }
 
@@ -89,7 +90,7 @@ function renderNode({ item, graph, state, actions }) {
   node.dataset.entryId = item.message.entryId;
   node.setAttribute("role", "treeitem");
   node.setAttribute("aria-selected", String(graph.selectedId === item.message.entryId));
-  node.setAttribute("aria-level", String(treePath(graph.visible, item.message.entryId).length));
+  node.setAttribute("aria-level", String(graph.depths.get(item.message.entryId)));
   if (item.message.entryId === graph.leafId) node.setAttribute("aria-current", "true");
   node.tabIndex = graph.selectedId === item.message.entryId ? 0 : -1;
   node.style.transform = `translate(${item.x}px, ${item.y}px)`;

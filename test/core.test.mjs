@@ -6,6 +6,7 @@ import {
   focusPath,
   layoutTree,
   matchesQuery,
+  nodeDepths,
   panView,
   parentMap,
   preferredSelection,
@@ -54,6 +55,15 @@ test("missing parents and cycles fail fast", () => {
   assert.throws(() => parentMap([message("same"), message("same")]), /duplicate_id/);
 });
 
+test("node depths are precomputed once for long conversations", () => {
+  const rows = Array.from({ length: 1000 }, (_, index) => message(`node-${index}`, {
+    parentId: index ? `node-${index - 1}` : null,
+  }));
+  const depths = nodeDepths(rows);
+  assert.equal(depths.get("node-0"), 1);
+  assert.equal(depths.get("node-999"), 1000);
+});
+
 test("Agent nodes are hidden by default while user ancestry stays connected", () => {
   const visible = visibleMessages(branch, false);
   assert.deepEqual(visible.map((item) => item.entryId), ["root", "user-a", "user-b"]);
@@ -75,6 +85,10 @@ test("viewport pan, zoom and active-path reset remain bounded", () => {
   const focused = focusPath({ width: 420, height: 340 }, { x: 100, y: 240 }, [{ x: 100, y: 40 }, { x: 100, y: 240 }]);
   assert.equal(focused.scale, 0.85);
   assert.equal(Math.round(focused.y * 10) / 10, 25.9);
+  const bent = focusPath({ width: 640, height: 340 }, { x: 400, y: 240 }, [{ x: 40, y: 40 }, { x: 400, y: 240 }]);
+  const left = bent.x + 40 * bent.scale;
+  const right = 640 - (bent.x + (400 + 166) * bent.scale);
+  assert.ok(Math.abs(left - right) < 0.2);
 });
 
 test("tree validation requires a real session and active leaf", () => {
