@@ -42,6 +42,13 @@ test("truncated context remains explicit and contains no navigation hash", () =>
   assert.equal(parsed.treeHash, null);
 });
 
+test("truncated context blocks navigation even when authority fields survived", () => {
+  const retained = { ...context(projection), truncated: true };
+  const parsed = parseContext(retained);
+  assert.equal(parsed.treeHash, "hash-1");
+  assert.match(navigationBlock(parsed, parsed.tree, parsed.treeHash), /上下文已截断/);
+});
+
 test("malformed mount context becomes an explicit disabled state", () => {
   const parsed = parseMountContext({ workspace: [] });
   assert.equal(parsed.visible, false);

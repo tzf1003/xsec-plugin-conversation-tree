@@ -111,6 +111,7 @@ export function canReadTree(context) {
 
 export function navigationBlock(context, tree, treeHash) {
   if (!context.visible) return "对话树当前不可见";
+  if (context.truncated) return "宿主上下文已截断，仅可浏览";
   if (!treeHash) return "缺少宿主发布的权威树摘要，仅可浏览";
   const sessionBlock = sessionNavigationBlock(context.session);
   if (sessionBlock) return sessionBlock;
