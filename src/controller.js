@@ -209,7 +209,6 @@ export class ConversationTreeController {
       this.state.error = `切换分支失败：${errorMessage(value)}`;
       this.state.navigating = false;
       this.render();
-      this.interactions.resetView();
     }
   }
 

@@ -48,6 +48,27 @@ test("same-authority updates preserve requests and clear recovered context error
   assert.equal(controller.state.error, null);
 });
 
+test("failed navigation preserves the current viewport", async () => {
+  const branching = tree([
+    message("root", { active: true }),
+    message("target", { parentId: "root" }),
+  ], { activeLeafId: "root" });
+  const controller = new ConversationTreeController({ request: async () => { throw new Error("rejected"); } });
+  controller.state = stateFor(parseContext(context(branching)), {
+    loading: false,
+    selectedId: "target",
+    mode: "all",
+    showAgentMessages: false,
+    query: "",
+  });
+  controller.render = () => null;
+  let resets = 0;
+  controller.interactions.resetView = () => { resets += 1; };
+  await controller.navigate("target");
+  assert.equal(resets, 0);
+  assert.match(controller.state.error, /rejected/);
+});
+
 test("new tree authority invalidates an in-flight request", () => {
   const controller = new ConversationTreeController({});
   controller.state = stateFor(parseContext(context(projection)));
