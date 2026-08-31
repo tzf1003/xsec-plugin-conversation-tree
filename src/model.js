@@ -7,7 +7,7 @@ import {
   treePath,
   visibleMessages,
 } from "./core.js";
-import { inspectorContext, navigationBlock } from "./context.js";
+import { inspectorContextResult, navigationBlock } from "./context.js";
 
 export function graphModel(state) {
   if (!state.tree) return null;
@@ -38,7 +38,7 @@ export function selectedModel(state, graph) {
   return {
     selected,
     path,
-    context: inspectorContext(state.context.session, path),
+    inspector: inspectorContextResult(state.context.session, path),
     navigationBlock: navigationBlock(state.context, state.tree, state.treeHash),
   };
 }

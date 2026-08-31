@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { navigationBlock, parseContext } from "../src/index.js";
+import { inspectorContextResult, navigationBlock, parseContext, parseMountContext } from "../src/context.js";
 import { context, message, tree } from "./fixtures.mjs";
 
 const projection = tree([
@@ -36,4 +36,20 @@ test("truncated context remains explicit and contains no navigation hash", () =>
   assert.equal(parsed.truncated, true);
   assert.equal(parsed.tree, null);
   assert.equal(parsed.treeHash, null);
+});
+
+test("malformed mount context becomes an explicit disabled state", () => {
+  const parsed = parseMountContext({ workspace: [] });
+  assert.equal(parsed.visible, false);
+  assert.match(parsed.error, /读取宿主上下文失败/);
+});
+
+test("malformed inspector metadata stays inside the inspector error boundary", () => {
+  const selected = message("root");
+  const session = {
+    messages: [{ entry_id: "root", content: { parts: [{ kind: "reference", reference: { kind: "unknown" } }] } }],
+  };
+  const result = inspectorContextResult(session, [selected]);
+  assert.equal(result.status, "error");
+  assert.match(result.message, /unknown_reference/);
 });

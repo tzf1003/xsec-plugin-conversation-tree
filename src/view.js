@@ -149,6 +149,14 @@ function renderKnownContext(container, value) {
   container.append(element("div", "ct-context-note", "这里只展示 xSec 已记录的消息、配置与引用；Provider 内部隐藏上下文可能不在其中。"));
 }
 
+function renderInspectorContext(container, inspector) {
+  if (inspector.status === "error") {
+    container.append(element("div", "ct-notice is-error", `读取节点上下文失败：${inspector.message}`));
+    return;
+  }
+  renderKnownContext(container, inspector.value);
+}
+
 function navigationButton({ state, graph, selected, actions }) {
   const isCurrent = selected.selected.entryId === graph.leafId;
   const label = isCurrent ? "当前分支" : "切换到此分支";
@@ -181,7 +189,7 @@ function renderInspector({ controls, state, graph, selected, actions }) {
   toggle.addEventListener("click", actions.context);
   const context = element("div", "ct-context");
   setHidden(context, !state.contextExpanded);
-  renderKnownContext(context, selected.context);
+  renderInspectorContext(context, selected.inspector);
   controls.inspector.append(header, preview, facts, toggle, context);
 }
 

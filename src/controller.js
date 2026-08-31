@@ -1,5 +1,5 @@
 import { DEFAULT_SCALE, validateTree } from "./core.js";
-import { parseContext, sourceState } from "./context.js";
+import { isHiddenContext, parseContext, parseMountContext, sourceState } from "./context.js";
 import {
   canStartNavigation,
   canStartRead,
@@ -21,31 +21,13 @@ function errorMessage(value) {
   return value instanceof Error ? value.message : String(value);
 }
 
-function isHiddenContext(value) {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value) && value.visible === false;
-}
-
-function contextForMount(value) {
-  if (!isHiddenContext(value)) return parseContext(value);
-  return {
-    raw: value,
-    workspace: null,
-    session: null,
-    tree: null,
-    treeHash: null,
-    sessionId: null,
-    truncated: value.truncated === true,
-    visible: false,
-  };
-}
-
 function initialState(context) {
   return {
     context,
     tree: context.tree,
     treeHash: context.treeHash,
     source: sourceState(context),
-    error: null,
+    error: context.error ?? null,
     notice: null,
     loading: false,
     navigating: false,
@@ -272,7 +254,7 @@ export class ConversationTreeController {
   async mount(nextRoot, initialContext) {
     this.root = nextRoot;
     installStyles();
-    this.state = initialState(contextForMount(initialContext));
+    this.state = initialState(parseMountContext(initialContext));
     this.controls = createShell(this.root, this.actions);
     const mode = getComputedStyle(document.documentElement).getPropertyValue("--xsec-color-mode").trim();
     this.applyTheme({ "color-mode": mode });
@@ -287,7 +269,7 @@ export class ConversationTreeController {
 
   async dispose() {
     this.disposed = true;
-    this.state.generation += 1;
+    if (this.state) this.state.generation += 1;
     this.themeSubscription?.dispose();
     this.root?.replaceChildren();
   }

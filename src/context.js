@@ -6,6 +6,34 @@ function isRecord(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+export function isHiddenContext(value) {
+  return isRecord(value) && value.visible === false;
+}
+
+function inactiveContext(raw, error = null) {
+  return {
+    raw,
+    workspace: null,
+    session: null,
+    tree: null,
+    treeHash: null,
+    sessionId: null,
+    truncated: raw?.truncated === true,
+    visible: false,
+    error,
+  };
+}
+
+export function parseMountContext(value) {
+  if (isHiddenContext(value)) return inactiveContext(value);
+  try {
+    return parseContext(value);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return inactiveContext(value, `读取宿主上下文失败：${message}`);
+  }
+}
+
 function optionalRecord(value, field) {
   if (value === undefined || value === null) return null;
   if (!isRecord(value)) throw new Error(`conversation_tree_invalid_${field}`);
@@ -147,6 +175,14 @@ export function inspectorContext(session, selectedPath) {
     commands,
     references: referencesFromMessage(message),
   };
+}
+
+export function inspectorContextResult(session, selectedPath) {
+  try {
+    return { status: "ready", value: inspectorContext(session, selectedPath) };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 function optionalEntryRecord(records, entryId, field) {
