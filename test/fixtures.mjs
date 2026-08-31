@@ -30,7 +30,7 @@ export function context(projection, options = {}) {
         status: options.status ?? "idle",
         consistency: options.consistency ?? "synchronized",
         pending_interactions: options.pendingInteractions ?? {},
-        tree_capability: { snapshot: true, navigate: options.navigate ?? true },
+        tree_capability: { snapshot: options.snapshot ?? true, navigate: options.navigate ?? true },
         conversation_tree: { ...projection, treeHash: options.treeHash ?? "hash-1" },
         messages: [],
         conversation_contexts: {},

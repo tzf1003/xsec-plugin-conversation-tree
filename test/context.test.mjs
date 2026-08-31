@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { inspectorContextResult, navigationBlock, parseContext, parseMountContext } from "../src/context.js";
+import { inspectorContextResult, navigationBlock, parseContext, parseMountContext, supportsTreeSnapshot } from "../src/context.js";
 import { context, message, tree } from "./fixtures.mjs";
 
 const projection = tree([
@@ -29,6 +29,10 @@ test("busy, unsynchronized and hidden sessions block navigation", () => {
   assert.match(navigationBlock(hidden, hidden.tree, hidden.treeHash), /不可见/);
   const interaction = parseContext(context(projection, { pendingInteractions: { approval: {} } }));
   assert.match(navigationBlock(interaction, interaction.tree, interaction.treeHash), /待处理交互/);
+});
+
+test("snapshot capability explicitly blocks tree reads", () => {
+  assert.equal(supportsTreeSnapshot(parseContext(context(projection, { snapshot: false }))), false);
 });
 
 test("truncated context remains explicit and contains no navigation hash", () => {

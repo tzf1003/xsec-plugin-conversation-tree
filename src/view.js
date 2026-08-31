@@ -1,4 +1,5 @@
 import { MAX_SCALE, MIN_SCALE, NODE_HEIGHT, NODE_WIDTH, matchesQuery, treePath } from "./core.js";
+import { supportsTreeSnapshot } from "./context.js";
 import { button, displayValue, element, factList, formatTime, shortText, svgElement } from "./elements.js";
 
 const MIN_STAGE_WIDTH = 520;
@@ -23,7 +24,7 @@ function renderNotice(controls, state) {
 function renderHeader(controls, state) {
   controls.badge.textContent = state.source.label;
   controls.badge.className = `ct-badge is-${state.source.availability}`;
-  controls.refresh.disabled = state.loading || state.navigating || !state.context.visible;
+  controls.refresh.disabled = state.loading || state.navigating || !supportsTreeSnapshot(state.context) || !state.context.visible;
   controls.refresh.textContent = state.loading ? "◌" : "↻";
   controls.refresh.setAttribute("aria-busy", String(state.loading));
   controls.search.value = state.query;
@@ -48,7 +49,7 @@ function renderEmpty(controls, state, graph) {
   controls.emptyTitle.textContent = title;
   controls.emptyDetail.textContent = detail;
   setHidden(controls.load, !canLoad);
-  controls.load.disabled = state.loading || state.navigating || !state.context.visible;
+  controls.load.disabled = state.loading || state.navigating || !supportsTreeSnapshot(state.context) || !state.context.visible;
   setHidden(controls.empty, Boolean(graph?.visible.length));
 }
 

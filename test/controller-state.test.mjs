@@ -6,19 +6,28 @@ import {
   contextFailurePatch,
   isRequestCurrent,
   readResponsePatch,
+  requestAuthorityRevision,
   treeViewRevision,
 } from "../src/controller-state.js";
 import { message, tree } from "./fixtures.mjs";
 
 test("hidden context cannot start a tree read", () => {
-  assert.equal(canStartRead({ disposed: false, loading: false, navigating: false, visible: false }), false);
-  assert.equal(canStartRead({ disposed: false, loading: false, navigating: false, visible: true }), true);
+  assert.equal(canStartRead({ disposed: false, loading: false, navigating: false, snapshotSupported: true, visible: false }), false);
+  assert.equal(canStartRead({ disposed: false, loading: false, navigating: false, snapshotSupported: true, visible: true }), true);
 });
 
 test("reads and navigation cannot overlap", () => {
-  assert.equal(canStartRead({ disposed: false, loading: false, navigating: true, visible: true }), false);
+  assert.equal(canStartRead({ disposed: false, loading: false, navigating: true, snapshotSupported: true, visible: true }), false);
+  assert.equal(canStartRead({ disposed: false, loading: false, navigating: false, snapshotSupported: false, visible: true }), false);
   assert.equal(canStartNavigation({ disposed: false, loading: true, navigating: false, visible: true }), false);
   assert.equal(canStartNavigation({ disposed: false, loading: false, navigating: false, visible: true }), true);
+});
+
+test("request authority changes only with session or authoritative hash", () => {
+  const original = { sessionId: "session-1", treeHash: "hash-1" };
+  assert.equal(requestAuthorityRevision({ ...original, visible: false }), requestAuthorityRevision(original));
+  assert.notEqual(requestAuthorityRevision({ ...original, treeHash: "hash-2" }), requestAuthorityRevision(original));
+  assert.notEqual(requestAuthorityRevision({ ...original, sessionId: "session-2" }), requestAuthorityRevision(original));
 });
 
 test("viewport revision tracks layout and active branch changes", () => {

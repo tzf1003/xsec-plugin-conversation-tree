@@ -1,11 +1,12 @@
 import { DEFAULT_SCALE, validateTree } from "./core.js";
-import { isHiddenContext, parseContext, parseMountContext, sourceState } from "./context.js";
+import { isHiddenContext, parseContext, parseMountContext, sourceState, supportsTreeSnapshot } from "./context.js";
 import {
   canStartNavigation,
   canStartRead,
   contextFailurePatch,
   isRequestCurrent,
   readResponsePatch,
+  requestAuthorityRevision,
   treeViewRevision,
 } from "./controller-state.js";
 import { ConversationTreeInteractions } from "./interactions.js";
@@ -85,10 +86,12 @@ export class ConversationTreeController {
     const nextId = next.sessionId ?? next.tree?.sessionId;
     const changed = Boolean(nextId && currentId && nextId !== currentId);
     const previousViewRevision = treeViewRevision(this.state.tree);
-    this.state.generation += 1;
+    const requestStale = requestAuthorityRevision(this.state.context) !== requestAuthorityRevision(next);
+    if (requestStale) this.state.generation += 1;
     this.state.context = next;
-    this.state.loading = false;
-    this.state.navigating = false;
+    if (requestStale) this.state.loading = false;
+    if (requestStale) this.state.navigating = false;
+    this.state.error = null;
     this.state.notice = null;
     if (changed) this.resetSessionState(next);
     else this.applyContextTree(next);
@@ -172,6 +175,7 @@ export class ConversationTreeController {
       disposed: this.disposed,
       loading: this.state.loading,
       navigating: this.state.navigating,
+      snapshotSupported: supportsTreeSnapshot(this.state.context),
       visible: this.state.context.visible,
     })) return;
     const fence = this.requestFence();
