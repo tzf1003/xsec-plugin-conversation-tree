@@ -31,6 +31,13 @@ test("busy, unsynchronized and hidden sessions block navigation", () => {
   assert.match(navigationBlock(interaction, interaction.tree, interaction.treeHash), /待处理交互/);
 });
 
+test("navigation capability must be the explicit boolean true", () => {
+  const malformed = context(projection);
+  malformed.workspace.session.tree_capability.navigate = "false";
+  const parsed = parseContext(malformed);
+  assert.match(navigationBlock(parsed, parsed.tree, parsed.treeHash), /不支持分支切换/);
+});
+
 test("snapshot capability explicitly blocks tree reads", () => {
   assert.equal(supportsTreeSnapshot(parseContext(context(projection, { snapshot: false }))), false);
 });

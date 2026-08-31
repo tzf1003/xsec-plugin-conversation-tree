@@ -184,17 +184,19 @@ export class ConversationTreeController {
     const fence = this.requestFence();
     Object.assign(this.state, { loading: true, error: null, notice: null });
     this.render();
+    let replacedTree = false;
     try {
       const response = await this.host.request(READ_METHOD, {});
       if (!this.isCurrent(fence)) return;
       this.acceptReadResponse(response);
+      replacedTree = response.status === "ready";
     } catch (value) {
       if (this.isCurrent(fence)) this.state.error = `读取对话树失败：${errorMessage(value)}`;
     }
     if (!this.isCurrent(fence)) return;
     this.state.loading = false;
     this.render();
-    this.interactions.resetView();
+    if (replacedTree) this.interactions.resetView();
   }
 
   acceptReadResponse(response) {

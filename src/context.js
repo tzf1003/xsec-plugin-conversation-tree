@@ -121,7 +121,7 @@ export function navigationBlock(context, tree, treeHash) {
 
 function sessionNavigationBlock(session) {
   if (!session) return "宿主上下文不包含当前会话状态";
-  if (!session.tree_capability?.navigate) return "当前 Provider 不支持分支切换";
+  if (session.tree_capability?.navigate !== true) return "当前 Provider 不支持分支切换";
   if (!QUIESCENT_STATUSES.has(session.status)) return "会话运行中，暂不能切换分支";
   if ((session.consistency ?? "synchronized") !== "synchronized") return "会话状态尚未同步";
   if (Object.keys(session.pending_interactions ?? {}).length) return "会话存在待处理交互";

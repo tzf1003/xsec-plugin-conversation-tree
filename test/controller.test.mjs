@@ -69,6 +69,31 @@ test("failed navigation preserves the current viewport", async () => {
   assert.match(controller.state.error, /rejected/);
 });
 
+test("reads reset the viewport only after installing a ready tree", async () => {
+  const parsed = parseContext(context(projection));
+  const responses = [{ status: "busy" }, new Error("invalid response")];
+  for (const response of responses) {
+    const host = { request: async () => {
+      if (response instanceof Error) throw response;
+      return response;
+    } };
+    const controller = new ConversationTreeController(host);
+    controller.state = stateFor(parsed, { loading: false });
+    controller.render = () => null;
+    let resets = 0;
+    controller.interactions.resetView = () => { resets += 1; };
+    await controller.load();
+    assert.equal(resets, 0);
+  }
+  const ready = new ConversationTreeController({ request: async () => ({ status: "ready", tree: projection }) });
+  ready.state = stateFor(parsed, { loading: false });
+  ready.render = () => null;
+  let readyResets = 0;
+  ready.interactions.resetView = () => { readyResets += 1; };
+  await ready.load();
+  assert.equal(readyResets, 1);
+});
+
 test("new tree authority invalidates an in-flight request", () => {
   const controller = new ConversationTreeController({});
   controller.state = stateFor(parseContext(context(projection)));
