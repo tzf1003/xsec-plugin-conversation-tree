@@ -203,22 +203,38 @@ function sortedRoots(messages, parents) {
   ));
 }
 
+function placeRoot({ root, children, positions, initialLeafColumn }) {
+  const stack = [{ message: root, depth: 0, expanded: false }];
+  let leafColumn = initialLeafColumn;
+  while (stack.length) {
+    const frame = stack.pop();
+    const descendants = children.get(frame.message.entryId) ?? [];
+    if (!frame.expanded && descendants.length) {
+      stack.push({ ...frame, expanded: true });
+      for (let index = descendants.length - 1; index >= 0; index -= 1) {
+        stack.push({ message: descendants[index], depth: frame.depth + 1, expanded: false });
+      }
+      continue;
+    }
+    const center = descendants.length
+      ? descendants.reduce((sum, child) => sum + positions.get(child.entryId).x + NODE_WIDTH / 2, 0) / descendants.length
+      : LAYOUT_PAD + NODE_WIDTH / 2 + leafColumn++ * (NODE_WIDTH + COLUMN_GAP);
+    positions.set(frame.message.entryId, {
+      x: center - NODE_WIDTH / 2,
+      y: LAYOUT_PAD + frame.depth * (NODE_HEIGHT + ROW_GAP),
+    });
+  }
+  return leafColumn;
+}
+
 export function layoutTree(messages) {
   const positions = new Map();
   const parents = parentMap(messages);
   if (!messages.length) return { positions, parentById: parents, width: 0, height: 0 };
   const children = childrenByParent(messages, parents);
   let leafColumn = 0;
-  const place = (message, depth) => {
-    const descendants = children.get(message.entryId) ?? [];
-    const center = descendants.length
-      ? descendants.reduce((sum, child) => sum + place(child, depth + 1), 0) / descendants.length
-      : LAYOUT_PAD + NODE_WIDTH / 2 + leafColumn++ * (NODE_WIDTH + COLUMN_GAP);
-    positions.set(message.entryId, { x: center - NODE_WIDTH / 2, y: LAYOUT_PAD + depth * (NODE_HEIGHT + ROW_GAP) });
-    return center;
-  };
   for (const root of sortedRoots(messages, parents)) {
-    place(root, 0);
+    leafColumn = placeRoot({ root, children, positions, initialLeafColumn: leafColumn });
     leafColumn += 1;
   }
   let width = 0;

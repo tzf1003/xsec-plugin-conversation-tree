@@ -64,6 +64,16 @@ test("node depths are precomputed once for long conversations", () => {
   assert.equal(depths.get("node-999"), 1000);
 });
 
+test("layout handles deep conversation chains without recursive stack growth", () => {
+  const rows = Array.from({ length: 5000 }, (_, index) => message(`node-${index}`, {
+    parentId: index ? `node-${index - 1}` : null,
+  }));
+  const layout = layoutTree(rows);
+  assert.equal(layout.positions.size, 5000);
+  assert.deepEqual(layout.positions.get("node-0"), { x: 40, y: 40 });
+  assert.deepEqual(layout.positions.get("node-4999"), { x: 40, y: 499940 });
+});
+
 test("Agent nodes are hidden by default while user ancestry stays connected", () => {
   const visible = visibleMessages(branch, false);
   assert.deepEqual(visible.map((item) => item.entryId), ["root", "user-a", "user-b"]);
