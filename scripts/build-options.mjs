@@ -13,7 +13,10 @@ export const buildOptions = {
   bundle: true,
   format: "esm",
   target: "es2022",
-  minify: true,
+  minifyIdentifiers: false,
+  minifySyntax: true,
+  minifyWhitespace: true,
   legalComments: "none",
   banner: { js: "/* Generated from src/ by npm run build. */" },
+  footer: { js: "export function activate(host) { return createController(host); }" },
 };
