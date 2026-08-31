@@ -38,6 +38,15 @@ test("navigation capability must be the explicit boolean true", () => {
   assert.match(navigationBlock(parsed, parsed.tree, parsed.treeHash), /不支持分支切换/);
 });
 
+test("malformed pending-interaction containers block navigation", () => {
+  for (const pending of [false, 0, []]) {
+    const malformed = context(projection);
+    malformed.workspace.session.pending_interactions = pending;
+    const parsed = parseContext(malformed);
+    assert.match(navigationBlock(parsed, parsed.tree, parsed.treeHash), /状态无效/);
+  }
+});
+
 test("snapshot capability explicitly blocks tree reads", () => {
   assert.equal(supportsTreeSnapshot(parseContext(context(projection, { snapshot: false }))), false);
 });

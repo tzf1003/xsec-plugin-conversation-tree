@@ -124,7 +124,9 @@ function sessionNavigationBlock(session) {
   if (session.tree_capability?.navigate !== true) return "当前 Provider 不支持分支切换";
   if (!QUIESCENT_STATUSES.has(session.status)) return "会话运行中，暂不能切换分支";
   if ((session.consistency ?? "synchronized") !== "synchronized") return "会话状态尚未同步";
-  if (Object.keys(session.pending_interactions ?? {}).length) return "会话存在待处理交互";
+  const pending = session.pending_interactions;
+  if (pending !== undefined && pending !== null && !isRecord(pending)) return "会话待处理交互状态无效";
+  if (pending && Object.keys(pending).length) return "会话存在待处理交互";
   return null;
 }
 
