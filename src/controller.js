@@ -85,7 +85,7 @@ export class ConversationTreeController {
     if (!next) return;
     const currentId = this.state.context.sessionId ?? this.state.tree?.sessionId;
     const nextId = next.sessionId ?? next.tree?.sessionId;
-    const changed = !next.truncated && nextId !== currentId;
+    const changed = nextId !== currentId && (!next.truncated || Boolean(nextId));
     const previousViewRevision = treeViewRevision(this.state.tree);
     const requestStale = requestAuthorityRevision(this.state.context) !== requestAuthorityRevision(next);
     if (requestStale) this.state.generation += 1;

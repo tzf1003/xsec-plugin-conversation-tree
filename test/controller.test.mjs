@@ -99,6 +99,33 @@ test("an unbound workspace clears a previously loaded snapshot", () => {
   assert.equal(controller.state.loadedTree, false);
 });
 
+test("a truncated session switch clears the previous session tree", () => {
+  const controller = new ConversationTreeController({});
+  controller.state = stateFor(parseContext(context(projection)), { loading: false, query: "session one" });
+  controller.render = () => null;
+  controller.interactions.resetView = () => {};
+  const next = context({ ...projection, sessionId: "session-2" });
+  next.truncated = true;
+  delete next.workspace.session.conversation_tree;
+  controller.updateContext(next);
+  assert.equal(controller.state.context.sessionId, "session-2");
+  assert.equal(controller.state.tree, null);
+  assert.equal(controller.state.query, "");
+});
+
+test("a truncated update for the same session retains its browseable tree", () => {
+  const controller = new ConversationTreeController({});
+  controller.state = stateFor(parseContext(context(projection)), { loading: false });
+  controller.render = () => null;
+  controller.interactions.resetView = () => {};
+  const next = context(projection);
+  next.truncated = true;
+  delete next.workspace.session.conversation_tree;
+  controller.updateContext(next);
+  assert.equal(controller.state.tree.sessionId, "session-1");
+  assert.equal(controller.state.treeHash, null);
+});
+
 test("same-authority context does not replace a returned browse-only tree", () => {
   const parsed = parseContext(context(projection));
   const returned = tree([
