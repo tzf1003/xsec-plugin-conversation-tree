@@ -3,6 +3,7 @@ export const NODE_HEIGHT = 66;
 export const MIN_SCALE = 0.45;
 export const MAX_SCALE = 1.6;
 export const DEFAULT_SCALE = 0.85;
+export const SUPPORTED_PROTOCOL_VERSION = 1;
 
 const COLUMN_GAP = 34;
 const ROW_GAP = 34;
@@ -86,6 +87,9 @@ export function parentMap(messages) {
 export function validateTree(value) {
   if (!value || typeof value !== "object" || Array.isArray(value) || !Array.isArray(value.messages)) {
     throw new Error("conversation_tree_invalid_snapshot");
+  }
+  if (value.protocolVersion !== SUPPORTED_PROTOCOL_VERSION) {
+    throw new Error(`conversation_tree_unsupported_protocol: ${String(value.protocolVersion)}`);
   }
   const messages = value.messages.map(validateMessage);
   parentMap(messages);

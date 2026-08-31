@@ -1,10 +1,12 @@
 import { DEFAULT_SCALE, validateTree } from "./core.js";
 import { parseContext, sourceState } from "./context.js";
 import {
+  canStartNavigation,
   canStartRead,
   contextFailurePatch,
   isRequestCurrent,
   readResponsePatch,
+  treeViewRevision,
 } from "./controller-state.js";
 import { ConversationTreeInteractions } from "./interactions.js";
 import { graphModel, selectedModel } from "./model.js";
@@ -100,6 +102,7 @@ export class ConversationTreeController {
     const currentId = this.state.context.sessionId ?? this.state.tree?.sessionId;
     const nextId = next.sessionId ?? next.tree?.sessionId;
     const changed = Boolean(nextId && currentId && nextId !== currentId);
+    const previousViewRevision = treeViewRevision(this.state.tree);
     this.state.generation += 1;
     this.state.context = next;
     this.state.loading = false;
@@ -107,8 +110,9 @@ export class ConversationTreeController {
     this.state.notice = null;
     if (changed) this.resetSessionState(next);
     else this.applyContextTree(next);
+    const viewChanged = changed || previousViewRevision !== treeViewRevision(this.state.tree);
     this.render();
-    if (next.tree || changed) this.interactions.resetView();
+    if (viewChanged) this.interactions.resetView();
   }
 
   parseUpdatedContext(value) {
@@ -185,6 +189,7 @@ export class ConversationTreeController {
     if (!canStartRead({
       disposed: this.disposed,
       loading: this.state.loading,
+      navigating: this.state.navigating,
       visible: this.state.context.visible,
     })) return;
     const fence = this.requestFence();
@@ -208,6 +213,7 @@ export class ConversationTreeController {
   }
 
   async navigate(entryId) {
+    if (!canStartNavigation({ disposed: this.disposed, loading: this.state.loading, navigating: this.state.navigating, visible: this.state.context.visible })) return;
     try {
       await this.performNavigation(entryId);
     } catch (value) {

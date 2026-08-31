@@ -8,8 +8,25 @@ const READ_STATUS_LABELS = {
   unverifiable: "不可核验",
 };
 
-export function canStartRead({ disposed, loading, visible }) {
-  return !disposed && !loading && visible;
+export function canStartRead({ disposed, loading, navigating, visible }) {
+  return !disposed && !loading && !navigating && visible;
+}
+
+export function canStartNavigation({ disposed, loading, navigating, visible }) {
+  return !disposed && !loading && !navigating && visible;
+}
+
+export function treeViewRevision(tree) {
+  if (!tree) return null;
+  const nodes = tree.messages.map((message) => [
+    message.entryId,
+    message.parentId,
+    message.branchGroupId,
+    message.role,
+    message.timestamp,
+    message.active,
+  ]);
+  return JSON.stringify([tree.sessionId, tree.activeLeafId, nodes]);
 }
 
 export function isRequestCurrent({ disposed, state, fence }) {

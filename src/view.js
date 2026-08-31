@@ -23,7 +23,7 @@ function renderNotice(controls, state) {
 function renderHeader(controls, state) {
   controls.badge.textContent = state.source.label;
   controls.badge.className = `ct-badge is-${state.source.availability}`;
-  controls.refresh.disabled = state.loading || !state.context.visible;
+  controls.refresh.disabled = state.loading || state.navigating || !state.context.visible;
   controls.refresh.textContent = state.loading ? "◌" : "↻";
   controls.refresh.setAttribute("aria-busy", String(state.loading));
   controls.search.value = state.query;
@@ -33,21 +33,23 @@ function renderHeader(controls, state) {
   renderNotice(controls, state);
 }
 
-function emptyContent(state) {
+export function emptyContent(state, graph) {
   if (state.loading) return ["正在读取对话树", "正在从当前会话读取真实 Provider 消息树。", false];
   if (state.source.availability === "unsupported") {
     return ["当前 Provider 不支持对话树", state.context.session?.tree_capability?.reason ?? "宿主明确报告该会话不支持消息树快照。", false];
   }
+  if (graph && !graph.messages.length) return ["当前对话树没有消息节点", "宿主返回了一个有效的空对话树快照。", false];
+  if (graph && !graph.visible.length) return ["当前范围没有可见节点", "可调整范围或开启“显示 Agent 消息”查看其他节点。", false];
   return ["尚未缓存对话树", "加载完整树是显式操作，可能恢复当前会话的本地运行时。", true];
 }
 
-function renderEmpty(controls, state) {
-  const [title, detail, canLoad] = emptyContent(state);
+function renderEmpty(controls, state, graph) {
+  const [title, detail, canLoad] = emptyContent(state, graph);
   controls.emptyTitle.textContent = title;
   controls.emptyDetail.textContent = detail;
   setHidden(controls.load, !canLoad);
-  controls.load.disabled = state.loading || !state.context.visible;
-  setHidden(controls.empty, Boolean(state.tree));
+  controls.load.disabled = state.loading || state.navigating || !state.context.visible;
+  setHidden(controls.empty, Boolean(graph?.visible.length));
 }
 
 function linkPath(item, parent) {
@@ -109,7 +111,7 @@ export function applyTransform(controls, state) {
 
 function renderGraph({ controls, state, graph, actions }) {
   controls.stage.replaceChildren();
-  if (!graph) {
+  if (!graph?.visible.length) {
     setHidden(controls.canvas, true);
     return;
   }
@@ -152,7 +154,7 @@ function navigationButton({ state, graph, selected, actions }) {
   const label = isCurrent ? "当前分支" : "切换到此分支";
   const action = button("ct-action", state.navigating ? "正在切换…" : label);
   const blocked = selected.navigationBlock;
-  action.disabled = isCurrent || Boolean(blocked) || state.navigating;
+  action.disabled = isCurrent || Boolean(blocked) || state.loading || state.navigating;
   action.title = isCurrent ? "该节点已是当前分支" : blocked ?? "精确切换到所选分支";
   action.addEventListener("click", () => actions.navigate(selected.selected.entryId));
   return action;
@@ -186,7 +188,7 @@ function renderInspector({ controls, state, graph, selected, actions }) {
 export function renderView({ controls, state, graph, selected, actions }) {
   controls.shell.inert = !state.context.visible;
   renderHeader(controls, state);
-  renderEmpty(controls, state);
+  renderEmpty(controls, state, graph);
   controls.summary.textContent = graph ? `${graph.visible.length} 个可见节点 · 全树 ${graph.messages.length} 个节点` : "";
   setHidden(controls.summary, !graph);
   controls.search.disabled = !graph || !state.context.visible;

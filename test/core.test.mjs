@@ -80,4 +80,6 @@ test("viewport pan, zoom and active-path reset remain bounded", () => {
 test("tree validation requires a real session and active leaf", () => {
   assert.throws(() => validateTree(tree(branch, { sessionId: "" })), /invalid_session_id/);
   assert.throws(() => validateTree(tree(branch, { activeLeafId: "missing" })), /active_leaf_missing/);
+  assert.throws(() => validateTree({ ...tree(branch), protocolVersion: 2 }), /unsupported_protocol/);
+  assert.throws(() => validateTree({ ...tree(branch), protocolVersion: undefined }), /unsupported_protocol/);
 });

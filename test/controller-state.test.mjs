@@ -1,16 +1,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  canStartNavigation,
   canStartRead,
   contextFailurePatch,
   isRequestCurrent,
   readResponsePatch,
+  treeViewRevision,
 } from "../src/controller-state.js";
 import { message, tree } from "./fixtures.mjs";
 
 test("hidden context cannot start a tree read", () => {
-  assert.equal(canStartRead({ disposed: false, loading: false, visible: false }), false);
-  assert.equal(canStartRead({ disposed: false, loading: false, visible: true }), true);
+  assert.equal(canStartRead({ disposed: false, loading: false, navigating: false, visible: false }), false);
+  assert.equal(canStartRead({ disposed: false, loading: false, navigating: false, visible: true }), true);
+});
+
+test("reads and navigation cannot overlap", () => {
+  assert.equal(canStartRead({ disposed: false, loading: false, navigating: true, visible: true }), false);
+  assert.equal(canStartNavigation({ disposed: false, loading: true, navigating: false, visible: true }), false);
+  assert.equal(canStartNavigation({ disposed: false, loading: false, navigating: false, visible: true }), true);
+});
+
+test("viewport revision tracks layout and active branch changes", () => {
+  const original = tree([message("root", { active: true })], { activeLeafId: "root" });
+  assert.equal(treeViewRevision({ ...original, messages: [{ ...original.messages[0], text: "updated" }] }), treeViewRevision(original));
+  assert.notEqual(treeViewRevision({ ...original, activeLeafId: null }), treeViewRevision(original));
+  assert.notEqual(treeViewRevision({ ...original, messages: [{ ...original.messages[0], active: false }] }), treeViewRevision(original));
+  assert.notEqual(treeViewRevision({ ...original, messages: [...original.messages, message("leaf", { parentId: "root" })] }), treeViewRevision(original));
 });
 
 test("request fencing rejects stale generation and session results", () => {
