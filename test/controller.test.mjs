@@ -98,3 +98,41 @@ test("an unbound workspace clears a previously loaded snapshot", () => {
   assert.equal(controller.state.tree, null);
   assert.equal(controller.state.loadedTree, false);
 });
+
+test("same-authority context does not replace a returned browse-only tree", () => {
+  const parsed = parseContext(context(projection));
+  const returned = tree([
+    message("root", { active: true }),
+    message("leaf", { parentId: "root", active: true }),
+  ], { activeLeafId: "leaf" });
+  const controller = new ConversationTreeController({});
+  controller.state = stateFor(parsed, {
+    tree: returned,
+    treeHash: null,
+    loadedTree: true,
+    loading: false,
+  });
+  controller.render = () => null;
+  controller.interactions.resetView = () => {};
+  controller.updateContext(context(projection));
+  assert.equal(controller.state.tree.activeLeafId, "leaf");
+  assert.equal(controller.state.loadedTree, true);
+  assert.equal(controller.state.treeHash, null);
+});
+
+test("rebinding through an unbound workspace resets session filters", () => {
+  const controller = new ConversationTreeController({});
+  controller.state = stateFor(parseContext(context(projection)), {
+    loading: false,
+    query: "old query",
+    mode: "active",
+    showAgentMessages: true,
+  });
+  controller.render = () => null;
+  controller.interactions.resetView = () => {};
+  controller.updateContext({ visible: true, workspace: {} });
+  controller.updateContext(context({ ...projection, sessionId: "session-2" }));
+  assert.equal(controller.state.query, "");
+  assert.equal(controller.state.mode, "all");
+  assert.equal(controller.state.showAgentMessages, false);
+});

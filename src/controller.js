@@ -8,7 +8,7 @@ import {
   readResponsePatch,
   requestAuthorityRevision,
   treeViewRevision,
-  validateResponseTree,
+  validateNavigationTree,
 } from "./controller-state.js";
 import { ConversationTreeInteractions } from "./interactions.js";
 import { graphModel, selectedModel } from "./model.js";
@@ -85,7 +85,7 @@ export class ConversationTreeController {
     if (!next) return;
     const currentId = this.state.context.sessionId ?? this.state.tree?.sessionId;
     const nextId = next.sessionId ?? next.tree?.sessionId;
-    const changed = Boolean(nextId && currentId && nextId !== currentId);
+    const changed = !next.truncated && nextId !== currentId;
     const previousViewRevision = treeViewRevision(this.state.tree);
     const requestStale = requestAuthorityRevision(this.state.context) !== requestAuthorityRevision(next);
     if (requestStale) this.state.generation += 1;
@@ -95,7 +95,7 @@ export class ConversationTreeController {
     this.state.error = null;
     this.state.notice = null;
     if (changed) this.resetSessionState(next);
-    else this.applyContextTree(next);
+    else this.applyContextTree(next, requestStale);
     const viewChanged = changed || previousViewRevision !== treeViewRevision(this.state.tree);
     this.render();
     if (viewChanged) this.interactions.resetView();
@@ -151,8 +151,8 @@ export class ConversationTreeController {
     });
   }
 
-  applyContextTree(context) {
-    if (context.tree) {
+  applyContextTree(context, authorityChanged) {
+    if (context.tree && (!this.state.loadedTree || authorityChanged)) {
       Object.assign(this.state, { tree: context.tree, treeHash: context.treeHash, loadedTree: false, error: null });
     } else if (context.truncated) {
       this.state.treeHash = null;
@@ -245,7 +245,7 @@ export class ConversationTreeController {
 
   acceptNavigation(response, entryId) {
     Object.assign(this.state, {
-      tree: validateResponseTree(response?.result, this.state.context.sessionId),
+      tree: validateNavigationTree(response?.result, this.state.context.sessionId, entryId),
       treeHash: null,
       loadedTree: true,
       source: { availability: "ready", label: "已切换" },

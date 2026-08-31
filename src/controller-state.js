@@ -1,4 +1,4 @@
-import { validateTree } from "./core.js";
+import { activeLeafId, validateTree } from "./core.js";
 
 const READ_STATUS_LABELS = {
   verification_pending: "核验中",
@@ -76,6 +76,14 @@ export function validateResponseTree(value, expectedSessionId) {
   const tree = validateTree(value);
   if (!expectedSessionId || tree.sessionId !== expectedSessionId) {
     throw new Error("conversation_tree_response_session_mismatch");
+  }
+  return tree;
+}
+
+export function validateNavigationTree(value, expectedSessionId, targetEntryId) {
+  const tree = validateResponseTree(value, expectedSessionId);
+  if (activeLeafId(tree.messages, tree.activeLeafId) !== targetEntryId) {
+    throw new Error("conversation_tree_navigation_target_mismatch");
   }
   return tree;
 }

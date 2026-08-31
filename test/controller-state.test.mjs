@@ -8,6 +8,7 @@ import {
   readResponsePatch,
   requestAuthorityRevision,
   treeViewRevision,
+  validateNavigationTree,
   validateResponseTree,
 } from "../src/controller-state.js";
 import { message, tree } from "./fixtures.mjs";
@@ -86,4 +87,13 @@ test("explicit ready reads stay browse-only until context publishes a hash", () 
 test("host responses must match the bound session", () => {
   assert.throws(() => validateResponseTree(tree([], { sessionId: "session-2" }), "session-1"), /response_session_mismatch/);
   assert.throws(() => validateResponseTree(tree([], { sessionId: "session-1" }), null), /response_session_mismatch/);
+});
+
+test("navigation results must resolve to the requested target", () => {
+  const result = tree([
+    message("root", { active: true }),
+    message("leaf", { parentId: "root", active: true }),
+  ], { activeLeafId: "leaf" });
+  assert.equal(validateNavigationTree(result, "session-1", "leaf").activeLeafId, "leaf");
+  assert.throws(() => validateNavigationTree(result, "session-1", "root"), /navigation_target_mismatch/);
 });
