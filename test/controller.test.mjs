@@ -211,6 +211,27 @@ test("same-authority context restores hash authority after an explicit read", ()
   assert.equal(controller.state.treeHash, "hash-1");
 });
 
+test("repeated authoritative context is processed after an explicit read", async () => {
+  const cached = context(projection);
+  const returned = tree([
+    message("root", { active: true }),
+    message("leaf", { parentId: "root", active: true }),
+  ], { activeLeafId: "leaf" });
+  const controller = new ConversationTreeController({
+    request: async () => ({ status: "ready", tree: returned }),
+  });
+  const parsed = parseContext(cached);
+  controller.state = stateFor(parsed, { loading: false });
+  controller.lastContextRevision = contextRevision(cached);
+  controller.render = () => null;
+  controller.interactions.resetView = () => {};
+  await controller.load();
+  controller.updateContext(cached);
+  assert.equal(controller.state.tree.activeLeafId, "root");
+  assert.equal(controller.state.loadedTree, false);
+  assert.equal(controller.state.treeHash, "hash-1");
+});
+
 test("navigation results wait for a new authoritative hash", () => {
   const branching = tree([
     message("root", { active: true }),

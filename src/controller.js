@@ -205,6 +205,7 @@ export class ConversationTreeController {
 
   acceptReadResponse(response) {
     Object.assign(this.state, readResponsePatch(response, this.state.context.sessionId));
+    if (response.status === "ready") this.lastContextRevision = null;
   }
 
   async navigate(entryId) {
