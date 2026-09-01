@@ -34,3 +34,11 @@ test("committed frontend exports an explicit lifecycle contract", async () => {
   const frontend = await import(new URL("com.xsec.desktop/frontend/index.js", pluginRoot));
   assert.equal(typeof frontend.activate, "function");
 });
+
+test("theme updates remain optional at the host boundary", async () => {
+  const controller = await readFile(new URL("../src/controller.js", import.meta.url), "utf8");
+  const frontend = await readFile(new URL("com.xsec.desktop/frontend/index.js", pluginRoot), "utf8");
+
+  assert.match(controller, /this\.host\.onTheme\?\.\(/);
+  assert.match(frontend, /this\.host\.onTheme\?\.\(/);
+});
