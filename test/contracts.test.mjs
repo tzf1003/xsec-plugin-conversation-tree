@@ -6,10 +6,10 @@ const pluginRoot = new URL("../plugins/com.xsec.workspace.conversation-tree/", i
 const manifest = JSON.parse(await readFile(new URL("plugin.json", pluginRoot), "utf8"));
 const codexManifest = JSON.parse(await readFile(new URL(".codex-plugin/plugin.json", pluginRoot), "utf8"));
 
-test("dual manifests identify the same 1.3.1 release", () => {
+test("dual manifests identify the same 1.3.2 release", () => {
   assert.equal(manifest.name, codexManifest.name);
   assert.equal(manifest.version, codexManifest.version);
-  assert.equal(manifest.version, "1.3.1");
+  assert.equal(manifest.version, "1.3.2");
 });
 
 test("manifest commits a v2 single-esm frontend with exact tree methods", () => {

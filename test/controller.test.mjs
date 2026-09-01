@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ConversationTreeController } from "../src/controller.js";
 import { canReadTree, parseContext, sourceState } from "../src/context.js";
+import { contextRevision } from "../src/controller-state.js";
 import { context, message, tree } from "./fixtures.mjs";
 
 const projection = tree([message("root", { active: true })], { activeLeafId: "root" });
@@ -26,6 +27,7 @@ function stateFor(parsed, overrides = {}) {
     loading: true,
     navigating: false,
     loadedTree: false,
+    navigationBaseHash: null,
     generation: 4,
     ...overrides,
   };
@@ -46,6 +48,22 @@ test("same-authority updates preserve requests and clear recovered context error
   assert.equal(controller.state.generation, 4);
   assert.equal(controller.state.loading, true);
   assert.equal(controller.state.error, null);
+});
+
+test("equivalent context updates do not rerender the conversation tree", () => {
+  const initial = context(projection);
+  const equivalent = {
+    workspace: initial.workspace,
+    visible: true,
+    kind: "workspace-tool",
+  };
+  const controller = new ConversationTreeController({});
+  controller.state = stateFor(parseContext(initial));
+  controller.lastContextRevision = contextRevision(initial);
+  let renders = 0;
+  controller.render = () => { renders += 1; };
+  controller.updateContext(equivalent);
+  assert.equal(renders, 0);
 });
 
 test("failed navigation preserves the current viewport", async () => {
@@ -172,7 +190,7 @@ test("a truncated update for the same session retains its browseable tree", () =
   assert.equal(controller.state.treeHash, null);
 });
 
-test("same-authority context does not replace a returned browse-only tree", () => {
+test("same-authority context restores hash authority after an explicit read", () => {
   const parsed = parseContext(context(projection));
   const returned = tree([
     message("root", { active: true }),
@@ -188,9 +206,32 @@ test("same-authority context does not replace a returned browse-only tree", () =
   controller.render = () => null;
   controller.interactions.resetView = () => {};
   controller.updateContext(context(projection));
-  assert.equal(controller.state.tree.activeLeafId, "leaf");
-  assert.equal(controller.state.loadedTree, true);
+  assert.equal(controller.state.tree.activeLeafId, "root");
+  assert.equal(controller.state.loadedTree, false);
+  assert.equal(controller.state.treeHash, "hash-1");
+});
+
+test("navigation results wait for a new authoritative hash", () => {
+  const branching = tree([
+    message("root", { active: true }),
+    message("target", { parentId: "root" }),
+  ], { activeLeafId: "root" });
+  const navigated = tree([
+    message("root", { active: true }),
+    message("target", { parentId: "root", active: true }),
+  ], { activeLeafId: "target" });
+  const controller = new ConversationTreeController({});
+  controller.state = stateFor(parseContext(context(branching)), { loading: false });
+  controller.render = () => null;
+  controller.interactions.resetView = () => {};
+  controller.acceptNavigation({ result: navigated }, "target", "hash-1");
+  controller.updateContext(context(branching));
+  assert.equal(controller.state.tree.activeLeafId, "target");
   assert.equal(controller.state.treeHash, null);
+  controller.updateContext(context(navigated, { treeHash: "hash-2" }));
+  assert.equal(controller.state.tree.activeLeafId, "target");
+  assert.equal(controller.state.treeHash, "hash-2");
+  assert.equal(controller.state.navigationBaseHash, null);
 });
 
 test("rebinding through an unbound workspace resets session filters", () => {
