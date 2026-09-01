@@ -25,6 +25,10 @@ test("busy, unsynchronized and hidden sessions block navigation", () => {
   assert.match(navigationBlock(busy, busy.tree, busy.treeHash), /运行中/);
   const pending = parseContext(context(projection, { consistency: "verification_pending" }));
   assert.match(navigationBlock(pending, pending.tree, pending.treeHash), /尚未同步/);
+  const missingConsistency = context(projection);
+  delete missingConsistency.workspace.session.consistency;
+  const unknown = parseContext(missingConsistency);
+  assert.match(navigationBlock(unknown, unknown.tree, unknown.treeHash), /尚未同步/);
   const hidden = parseContext(context(projection, { visible: false }));
   assert.match(navigationBlock(hidden, hidden.tree, hidden.treeHash), /不可见/);
   const interaction = parseContext(context(projection, { pendingInteractions: { approval: {} } }));
