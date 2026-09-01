@@ -81,6 +81,7 @@ test("explicit ready reads stay browse-only until context publishes a hash", () 
   ], { activeLeafId: "root" }) }, "session-1");
   assert.equal(patch.treeHash, null);
   assert.equal(patch.loadedTree, true);
+  assert.equal(patch.navigationBaseHash, null);
   assert.equal(patch.tree.activeLeafId, "root");
 });
 

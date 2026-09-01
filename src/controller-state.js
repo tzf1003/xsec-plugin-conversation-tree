@@ -1,4 +1,4 @@
-import { activeLeafId, validateTree } from "./core.js";
+import { activeLeafId, DEFAULT_SCALE, validateTree } from "./core.js";
 
 const READ_STATUS_LABELS = {
   verification_pending: "核验中",
@@ -7,6 +7,29 @@ const READ_STATUS_LABELS = {
   runtime_unavailable: "待加载",
   unverifiable: "不可核验",
 };
+
+export function initialControllerState(context, source) {
+  return {
+    context,
+    tree: context.tree,
+    treeHash: context.treeHash,
+    source,
+    error: context.error ?? null,
+    notice: null,
+    loading: false,
+    navigating: false,
+    loadedTree: false,
+    navigationBaseHash: null,
+    selectedId: null,
+    mode: "all",
+    showAgentMessages: false,
+    query: "",
+    contextExpanded: true,
+    view: { x: 24, y: 24, scale: DEFAULT_SCALE },
+    drag: null,
+    generation: 0,
+  };
+}
 
 export function canStartRead({ disposed, loading, navigating, readSupported, visible }) {
   return !disposed && !loading && !navigating && readSupported && visible;
@@ -31,6 +54,22 @@ export function treeViewRevision(tree) {
 
 export function requestAuthorityRevision(context) {
   return JSON.stringify([context.sessionId, context.treeHash]);
+}
+
+function stableSerialize(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(",")}]`;
+  return `{${Object.entries(value)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, item]) => `${JSON.stringify(key)}:${stableSerialize(item)}`)
+    .join(",")}}`;
+}
+
+export function contextRevision(value) {
+  const source = value && typeof value === "object" && "raw" in value
+    ? value.raw
+    : value;
+  return stableSerialize(source);
 }
 
 export function isRequestCurrent({ disposed, state, fence }) {
@@ -59,6 +98,7 @@ export function readResponsePatch(response, expectedSessionId) {
       tree: validateResponseTree(response.tree, expectedSessionId),
       treeHash: null,
       loadedTree: true,
+      navigationBaseHash: null,
       source: { availability: "ready", label: "已读取" },
       selectedId: null,
     };

@@ -3,7 +3,9 @@ import { canReadTree, isHiddenContext, parseContext, parseMountContext, sourceSt
 import {
   canStartNavigation,
   canStartRead,
+  contextRevision,
   contextFailurePatch,
+  initialControllerState,
   isRequestCurrent,
   readResponsePatch,
   requestAuthorityRevision,
@@ -23,28 +25,6 @@ function errorMessage(value) {
   return value instanceof Error ? value.message : String(value);
 }
 
-function initialState(context) {
-  return {
-    context,
-    tree: context.tree,
-    treeHash: context.treeHash,
-    source: sourceState(context),
-    error: context.error ?? null,
-    notice: null,
-    loading: false,
-    navigating: false,
-    loadedTree: false,
-    selectedId: null,
-    mode: "all",
-    showAgentMessages: false,
-    query: "",
-    contextExpanded: true,
-    view: { x: 24, y: 24, scale: DEFAULT_SCALE },
-    drag: null,
-    generation: 0,
-  };
-}
-
 export class ConversationTreeController {
   constructor(host) {
     this.host = host;
@@ -52,6 +32,7 @@ export class ConversationTreeController {
     this.controls = null;
     this.state = null;
     this.disposed = false;
+    this.lastContextRevision = null;
     this.themeSubscription = null;
     this.interactions = new ConversationTreeInteractions(this);
     this.actions = {
@@ -77,6 +58,9 @@ export class ConversationTreeController {
   }
 
   updateContext(value) {
+    const revision = contextRevision(value);
+    if (revision === this.lastContextRevision) return;
+    this.lastContextRevision = revision;
     if (isHiddenContext(value)) {
       this.suspend(value);
       return;
@@ -95,7 +79,7 @@ export class ConversationTreeController {
     this.state.error = null;
     this.state.notice = null;
     if (changed) this.resetSessionState(next);
-    else this.applyContextTree(next, requestStale);
+    else this.applyContextTree(next);
     const viewChanged = changed || previousViewRevision !== treeViewRevision(this.state.tree);
     this.render();
     if (viewChanged) this.interactions.resetView();
@@ -142,6 +126,7 @@ export class ConversationTreeController {
       treeHash: context.treeHash,
       source: sourceState(context),
       loadedTree: false,
+      navigationBaseHash: null,
       selectedId: null,
       query: "",
       mode: "all",
@@ -151,13 +136,27 @@ export class ConversationTreeController {
     });
   }
 
-  applyContextTree(context, authorityChanged) {
-    if (context.tree && (!this.state.loadedTree || authorityChanged)) {
-      Object.assign(this.state, { tree: context.tree, treeHash: context.treeHash, loadedTree: false, error: null });
+  applyContextTree(context) {
+    const restoresAuthority = this.state.loadedTree
+      && (!this.state.navigationBaseHash || context.treeHash !== this.state.navigationBaseHash);
+    if (context.tree && (!this.state.loadedTree || restoresAuthority)) {
+      Object.assign(this.state, {
+        tree: context.tree,
+        treeHash: context.treeHash,
+        loadedTree: false,
+        navigationBaseHash: null,
+        error: null,
+      });
     } else if (context.truncated) {
       this.state.treeHash = null;
     } else if (!context.sessionId) {
-      Object.assign(this.state, { tree: null, treeHash: null, loadedTree: false, selectedId: null });
+      Object.assign(this.state, {
+        tree: null,
+        treeHash: null,
+        loadedTree: false,
+        navigationBaseHash: null,
+        selectedId: null,
+      });
     } else if (!this.state.loadedTree) {
       this.state.tree = null;
       this.state.treeHash = null;
@@ -183,6 +182,7 @@ export class ConversationTreeController {
     })) return;
     const fence = this.requestFence();
     Object.assign(this.state, { loading: true, error: null, notice: null });
+    console.info("conversation-tree.read.started");
     this.render();
     let replacedTree = false;
     try {
@@ -190,8 +190,12 @@ export class ConversationTreeController {
       if (!this.isCurrent(fence)) return;
       this.acceptReadResponse(response);
       replacedTree = response.status === "ready";
+      console.info("conversation-tree.read.completed", { status: response.status });
     } catch (value) {
-      if (this.isCurrent(fence)) this.state.error = `读取对话树失败：${errorMessage(value)}`;
+      if (this.isCurrent(fence)) {
+        console.error("conversation-tree.read.failed", { message: errorMessage(value) });
+        this.state.error = `读取对话树失败：${errorMessage(value)}`;
+      }
     }
     if (!this.isCurrent(fence)) return;
     this.state.loading = false;
@@ -201,6 +205,7 @@ export class ConversationTreeController {
 
   acceptReadResponse(response) {
     Object.assign(this.state, readResponsePatch(response, this.state.context.sessionId));
+    this.lastContextRevision = null;
   }
 
   async navigate(entryId) {
@@ -208,6 +213,7 @@ export class ConversationTreeController {
     try {
       await this.performNavigation(entryId);
     } catch (value) {
+      console.error("conversation-tree.navigate.failed", { message: errorMessage(value) });
       this.state.error = `切换分支失败：${errorMessage(value)}`;
       this.state.navigating = false;
       this.render();
@@ -229,6 +235,7 @@ export class ConversationTreeController {
     const request = this.navigationRequest(entryId);
     const fence = this.requestFence();
     Object.assign(this.state, { navigating: true, error: null });
+    console.info("conversation-tree.navigate.started");
     this.render();
     let response;
     try {
@@ -238,17 +245,19 @@ export class ConversationTreeController {
       return;
     }
     if (!this.isCurrent(fence)) return;
-    this.acceptNavigation(response, entryId);
+    this.acceptNavigation(response, entryId, request.expectedTreeHash);
+    console.info("conversation-tree.navigate.completed");
     this.state.navigating = false;
     this.render();
     this.interactions.resetView();
   }
 
-  acceptNavigation(response, entryId) {
+  acceptNavigation(response, entryId, navigationBaseHash) {
     Object.assign(this.state, {
       tree: validateNavigationTree(response?.result, this.state.context.sessionId, entryId),
       treeHash: null,
       loadedTree: true,
+      navigationBaseHash,
       source: { availability: "ready", label: "已切换" },
       notice: "分支已切换；等待宿主发布新的权威树摘要。",
       selectedId: entryId,
@@ -262,13 +271,16 @@ export class ConversationTreeController {
   async mount(nextRoot, initialContext) {
     this.root = nextRoot;
     installStyles();
-    this.state = initialState(parseMountContext(initialContext));
+    const context = parseMountContext(initialContext);
+    this.lastContextRevision = contextRevision(initialContext);
+    this.state = initialControllerState(context, sourceState(context));
     this.controls = createShell(this.root, this.actions);
     const mode = getComputedStyle(document.documentElement).getPropertyValue("--xsec-color-mode").trim();
     this.applyTheme({ "color-mode": mode });
     this.themeSubscription = this.host.onTheme((theme) => this.applyTheme(theme));
     this.render();
     if (this.state.tree) this.interactions.resetView();
+    console.info("conversation-tree.mount", { treeAvailable: Boolean(this.state.tree) });
   }
 
   async update(nextContext) {
@@ -276,6 +288,7 @@ export class ConversationTreeController {
   }
 
   async dispose() {
+    console.debug("conversation-tree.dispose");
     this.disposed = true;
     if (this.state) this.state.generation += 1;
     this.themeSubscription?.dispose();
@@ -284,5 +297,6 @@ export class ConversationTreeController {
 }
 
 export function createController(host) {
+  console.debug("conversation-tree.activate", { apiVersion: host.apiVersion });
   return new ConversationTreeController(host);
 }
