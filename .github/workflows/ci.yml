@@ -20,3 +20,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+
+  source-preflight:
+    needs: manifest
+    uses: tzf1003/xsec-plugins/.github/workflows/first-party-source-preflight.yml@main
+    with:
+      plugin_id: com.xsec.workspace.conversation-tree
