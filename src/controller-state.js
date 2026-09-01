@@ -8,6 +8,10 @@ const READ_STATUS_LABELS = {
   unverifiable: "不可核验",
 };
 
+export function errorMessage(value) {
+  return value instanceof Error ? value.message : String(value);
+}
+
 export function initialControllerState(context, source) {
   return {
     context,
@@ -53,7 +57,23 @@ export function treeViewRevision(tree) {
 }
 
 export function requestAuthorityRevision(context) {
-  return JSON.stringify([context.sessionId, context.treeHash]);
+  const session = context.session;
+  const leafId = context.tree
+    ? activeLeafId(context.tree.messages, context.tree.activeLeafId)
+    : null;
+  return stableSerialize([
+    context.sessionId,
+    context.treeHash,
+    context.visible,
+    context.truncated,
+    leafId,
+    Boolean(session),
+    session?.status,
+    session?.consistency,
+    session?.pending_interactions,
+    session?.tree_capability?.snapshot,
+    session?.tree_capability?.navigate,
+  ]);
 }
 
 function stableSerialize(value) {
@@ -89,7 +109,7 @@ export function contextFailurePatch({ context, raw, message }) {
   };
 }
 
-export function readResponsePatch(response, expectedSessionId) {
+export function readResponsePatch(response, expectedSessionId, navigationBaseHash = null) {
   if (!response || typeof response !== "object" || typeof response.status !== "string") {
     throw new Error("conversation_tree_invalid_read_response");
   }
@@ -98,7 +118,7 @@ export function readResponsePatch(response, expectedSessionId) {
       tree: validateResponseTree(response.tree, expectedSessionId),
       treeHash: null,
       loadedTree: true,
-      navigationBaseHash: null,
+      navigationBaseHash,
       source: { availability: "ready", label: "已读取" },
       selectedId: null,
     };
