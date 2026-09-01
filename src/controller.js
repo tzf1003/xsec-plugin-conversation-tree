@@ -274,7 +274,7 @@ export class ConversationTreeController {
     this.controls = createShell(this.root, this.actions);
     const mode = getComputedStyle(document.documentElement).getPropertyValue("--xsec-color-mode").trim();
     this.applyTheme({ "color-mode": mode });
-    this.themeSubscription = this.host.onTheme((theme) => this.applyTheme(theme));
+    this.themeSubscription = this.host.onTheme?.((theme) => this.applyTheme(theme));
     this.render();
     if (this.state.tree) this.interactions.resetView();
     console.info("conversation-tree.mount", { treeAvailable: Boolean(this.state.tree) });
