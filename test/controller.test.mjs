@@ -232,6 +232,23 @@ test("repeated authoritative context is processed after an explicit read", async
   assert.equal(controller.state.treeHash, "hash-1");
 });
 
+test("repeated authoritative context is processed after a non-ready read", async () => {
+  const cached = context(projection);
+  const controller = new ConversationTreeController({
+    request: async () => ({ status: "busy" }),
+  });
+  const parsed = parseContext(cached);
+  controller.state = stateFor(parsed, { loading: false });
+  controller.lastContextRevision = contextRevision(cached);
+  controller.render = () => null;
+  controller.interactions.resetView = () => {};
+  await controller.load();
+  assert.equal(controller.state.treeHash, null);
+  controller.updateContext(cached);
+  assert.equal(controller.state.treeHash, "hash-1");
+  assert.equal(controller.state.tree.activeLeafId, "root");
+});
+
 test("navigation results wait for a new authoritative hash", () => {
   const branching = tree([
     message("root", { active: true }),
