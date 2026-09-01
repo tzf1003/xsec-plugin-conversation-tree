@@ -5,6 +5,7 @@ import {
   canStartRead,
   contextRevision,
   contextFailurePatch,
+  errorMessage,
   initialControllerState,
   isRequestCurrent,
   readResponsePatch,
@@ -20,10 +21,6 @@ import { renderFatal, renderView } from "./view.js";
 
 const READ_METHOD = "xsec.conversation-tree.read";
 const NAVIGATE_METHOD = "xsec.conversation-tree.navigate";
-
-function errorMessage(value) {
-  return value instanceof Error ? value.message : String(value);
-}
 
 export class ConversationTreeController {
   constructor(host) {
@@ -180,6 +177,7 @@ export class ConversationTreeController {
       readSupported: canReadTree(this.state.context),
       visible: this.state.context.visible,
     })) return;
+    const navigationBaseHash = this.state.treeHash;
     const fence = this.requestFence();
     Object.assign(this.state, { loading: true, error: null, notice: null });
     console.info("conversation-tree.read.started");
@@ -188,7 +186,7 @@ export class ConversationTreeController {
     try {
       const response = await this.host.request(READ_METHOD, {});
       if (!this.isCurrent(fence)) return;
-      this.acceptReadResponse(response);
+      this.acceptReadResponse(response, navigationBaseHash);
       replacedTree = response.status === "ready";
       console.info("conversation-tree.read.completed", { status: response.status });
     } catch (value) {
@@ -203,8 +201,8 @@ export class ConversationTreeController {
     if (replacedTree) this.interactions.resetView();
   }
 
-  acceptReadResponse(response) {
-    Object.assign(this.state, readResponsePatch(response, this.state.context.sessionId));
+  acceptReadResponse(response, navigationBaseHash) {
+    Object.assign(this.state, readResponsePatch(response, this.state.context.sessionId, navigationBaseHash));
     this.lastContextRevision = null;
   }
 

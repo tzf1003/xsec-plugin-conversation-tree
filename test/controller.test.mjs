@@ -39,14 +39,16 @@ test("dispose is safe before mount completes", async () => {
   assert.equal(controller.disposed, true);
 });
 
-test("same-authority updates preserve requests and clear recovered context errors", () => {
+test("navigation authority updates invalidate requests and clear recovered context errors", () => {
   const controller = new ConversationTreeController({});
-  controller.state = stateFor(parseContext(context(projection)));
+  controller.state = stateFor(parseContext(context(projection)), { loading: false, navigating: true });
+  const fence = { generation: 4, sessionId: "session-1" };
   controller.render = () => null;
   controller.interactions.resetView = () => {};
   controller.updateContext(context(projection, { status: "running" }));
-  assert.equal(controller.state.generation, 4);
-  assert.equal(controller.state.loading, true);
+  assert.equal(controller.state.generation, 5);
+  assert.equal(controller.state.navigating, false);
+  assert.equal(controller.isCurrent(fence), false);
   assert.equal(controller.state.error, null);
 });
 
@@ -190,7 +192,7 @@ test("a truncated update for the same session retains its browseable tree", () =
   assert.equal(controller.state.treeHash, null);
 });
 
-test("same-authority context restores hash authority after an explicit read", () => {
+test("a loaded tree remains until the projection hash advances", () => {
   const parsed = parseContext(context(projection));
   const returned = tree([
     message("root", { active: true }),
@@ -201,17 +203,22 @@ test("same-authority context restores hash authority after an explicit read", ()
     tree: returned,
     treeHash: null,
     loadedTree: true,
+    navigationBaseHash: "hash-1",
     loading: false,
   });
   controller.render = () => null;
   controller.interactions.resetView = () => {};
   controller.updateContext(context(projection));
+  assert.equal(controller.state.tree.activeLeafId, "leaf");
+  assert.equal(controller.state.loadedTree, true);
+  assert.equal(controller.state.treeHash, null);
+  controller.updateContext(context(projection, { treeHash: "hash-2" }));
   assert.equal(controller.state.tree.activeLeafId, "root");
   assert.equal(controller.state.loadedTree, false);
-  assert.equal(controller.state.treeHash, "hash-1");
+  assert.equal(controller.state.treeHash, "hash-2");
 });
 
-test("repeated authoritative context is processed after an explicit read", async () => {
+test("an explicit read records and retains the current projection hash", async () => {
   const cached = context(projection);
   const returned = tree([
     message("root", { active: true }),
@@ -227,9 +234,10 @@ test("repeated authoritative context is processed after an explicit read", async
   controller.interactions.resetView = () => {};
   await controller.load();
   controller.updateContext(cached);
-  assert.equal(controller.state.tree.activeLeafId, "root");
-  assert.equal(controller.state.loadedTree, false);
-  assert.equal(controller.state.treeHash, "hash-1");
+  assert.equal(controller.state.tree.activeLeafId, "leaf");
+  assert.equal(controller.state.loadedTree, true);
+  assert.equal(controller.state.navigationBaseHash, "hash-1");
+  assert.equal(controller.state.treeHash, null);
 });
 
 test("repeated authoritative context is processed after a non-ready read", async () => {

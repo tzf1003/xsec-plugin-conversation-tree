@@ -25,11 +25,35 @@ test("reads and navigation cannot overlap", () => {
   assert.equal(canStartNavigation({ disposed: false, loading: false, navigating: false, visible: true }), true);
 });
 
-test("request authority changes only with session or authoritative hash", () => {
-  const original = { sessionId: "session-1", treeHash: "hash-1" };
-  assert.equal(requestAuthorityRevision({ ...original, visible: false }), requestAuthorityRevision(original));
-  assert.notEqual(requestAuthorityRevision({ ...original, treeHash: "hash-2" }), requestAuthorityRevision(original));
-  assert.notEqual(requestAuthorityRevision({ ...original, sessionId: "session-2" }), requestAuthorityRevision(original));
+test("request authority tracks every read and navigation predicate", () => {
+  const original = {
+    sessionId: "session-1",
+    treeHash: "hash-1",
+    tree: tree([message("root", { active: true })], { activeLeafId: "root" }),
+    visible: true,
+    truncated: false,
+    session: {
+      status: "idle",
+      consistency: "synchronized",
+      pending_interactions: {},
+      tree_capability: { snapshot: true, navigate: true },
+    },
+  };
+  const revisions = [
+    { ...original, visible: false },
+    { ...original, truncated: true },
+    { ...original, treeHash: "hash-2" },
+    { ...original, tree: tree([message("root")]) },
+    { ...original, sessionId: "session-2" },
+    { ...original, session: { ...original.session, status: "running" } },
+    { ...original, session: { ...original.session, consistency: "unsynchronized" } },
+    { ...original, session: { ...original.session, pending_interactions: { approval: {} } } },
+    { ...original, session: { ...original.session, tree_capability: { snapshot: false, navigate: true } } },
+    { ...original, session: { ...original.session, tree_capability: { snapshot: true, navigate: false } } },
+  ];
+  for (const changed of revisions) {
+    assert.notEqual(requestAuthorityRevision(changed), requestAuthorityRevision(original));
+  }
 });
 
 test("viewport revision tracks layout and active branch changes", () => {
@@ -75,13 +99,13 @@ test("non-ready reads revoke the previous authoritative hash", () => {
   assert.match(patch.notice, /暂不可读/);
 });
 
-test("explicit ready reads stay browse-only until context publishes a hash", () => {
+test("explicit ready reads retain the projection hash present when reading started", () => {
   const patch = readResponsePatch({ status: "ready", tree: tree([
     message("root", { active: true }),
-  ], { activeLeafId: "root" }) }, "session-1");
+  ], { activeLeafId: "root" }) }, "session-1", "hash-1");
   assert.equal(patch.treeHash, null);
   assert.equal(patch.loadedTree, true);
-  assert.equal(patch.navigationBaseHash, null);
+  assert.equal(patch.navigationBaseHash, "hash-1");
   assert.equal(patch.tree.activeLeafId, "root");
 });
 
