@@ -19,12 +19,11 @@ import { createShell } from "./shell.js";
 import { installStyles } from "./styles.js";
 import { renderFatal, renderView } from "./view.js";
 
-const READ_METHOD = "xsec.conversation-tree.read";
-const NAVIGATE_METHOD = "xsec.conversation-tree.navigate";
-
 export class ConversationTreeController {
-  constructor(host) {
+  constructor(host, requests = {}) {
     this.host = host;
+    this.onRead = requests.readTree ?? null;
+    this.onNavigate = requests.navigateTree ?? null;
     this.root = null;
     this.controls = null;
     this.state = null;
@@ -184,7 +183,7 @@ export class ConversationTreeController {
     this.render();
     let replacedTree = false;
     try {
-      const response = await this.host.request(READ_METHOD, {});
+      const response = await this.onRead();
       if (!this.isCurrent(fence)) return;
       this.acceptReadResponse(response, navigationBaseHash);
       replacedTree = response.status === "ready";
@@ -237,7 +236,7 @@ export class ConversationTreeController {
     this.render();
     let response;
     try {
-      response = await this.host.request(NAVIGATE_METHOD, request);
+      response = await this.onNavigate(request);
     } catch (error) {
       if (this.isCurrent(fence)) throw error;
       return;
@@ -294,7 +293,7 @@ export class ConversationTreeController {
   }
 }
 
-export function createController(host) {
+export function createController(host, requests) {
   console.debug("conversation-tree.activate", { apiVersion: host.apiVersion });
-  return new ConversationTreeController(host);
+  return new ConversationTreeController(host, requests);
 }
