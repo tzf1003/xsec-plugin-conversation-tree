@@ -10,3 +10,19 @@ remain in [tzf1003/xsec-plugins](https://github.com/tzf1003/xsec-plugins).
 This source repository never stores Factory credentials or KMS material.
 
 Source repository: <https://github.com/tzf1003/xsec-plugin-conversation-tree>
+
+## Development
+
+The readable frontend source is under `src/`; the manifest entrypoint is a
+committed, bundled `single-esm` artifact because Factory does not build plugin
+frontends during adoption.
+
+```sh
+npm ci
+npm run check
+npm run build
+```
+
+See
+[`OFFICIAL_PLUGIN_BRIDGE.md`](plugins/com.xsec.workspace.conversation-tree/OFFICIAL_PLUGIN_BRIDGE.md)
+for the restored behavior and the current Desktop host boundary.
