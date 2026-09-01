@@ -23,10 +23,13 @@ test("manifest commits a v2 single-esm frontend with exact tree methods", () => 
   assert.equal(desktop.entrypoints.frontend, "./com.xsec.desktop/frontend/index.js");
 });
 
-test("committed frontend is bundled and exports activate", async () => {
+test("committed frontend exports an explicit lifecycle contract", async () => {
   const source = await readFile(new URL("com.xsec.desktop/frontend/index.js", pluginRoot), "utf8");
   assert.doesNotMatch(source, /\bfrom\s+["']/);
   assert.match(source, /export\s+function\s+activate\s*\(\s*host\s*\)/);
+  assert.match(source, /return\s*\{\s*mount\s*\([^)]*\)\s*\{/);
+  assert.match(source, /update\s*\([^)]*\)\s*\{/);
+  assert.match(source, /dispose\s*\(\s*\)\s*\{/);
 
   const frontend = await import(new URL("com.xsec.desktop/frontend/index.js", pluginRoot));
   assert.equal(typeof frontend.activate, "function");

@@ -18,5 +18,18 @@ export const buildOptions = {
   minifyWhitespace: true,
   legalComments: "none",
   banner: { js: "/* Generated from src/ by npm run build. */" },
-  footer: { js: "export function activate(host) { return createController(host); }" },
+  footer: {
+    js: `export function activate(host) {
+  async function readTree() { return host.request("xsec.conversation-tree.read", {}); }
+  async function navigateTree(request) { return host.request("xsec.conversation-tree.navigate", request); }
+  const controller = createController(host);
+  controller.onRead = readTree;
+  controller.onNavigate = navigateTree;
+  return {
+    mount(root, context) { return controller.mount(root, context); },
+    update(context) { return controller.update(context); },
+    dispose() { return controller.dispose(); },
+  };
+}`,
+  },
 };
