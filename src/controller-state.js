@@ -6,6 +6,7 @@ const READ_STATUS_LABELS = {
   busy: "运行中",
   runtime_unavailable: "待加载",
   unverifiable: "不可核验",
+  streamed: "正在接收",
 };
 
 export function errorMessage(value) {

@@ -23,12 +23,22 @@ export const buildOptions = {
   async function readTree() { return host.request("xsec.conversation-tree.read", {}); }
   async function navigateTree(request) { return host.request("xsec.conversation-tree.navigate", request); }
   const controller = createController(host);
+  const snapshots = new ConversationTreeSnapshotReceiver();
+  const snapshotSubscription = host.onData("xsec.conversation-tree.snapshot", (payload) => {
+    try {
+      const snapshot = snapshots.accept(payload);
+      if (snapshot) controller.updateSnapshot(snapshot);
+    } catch (error) {
+      console.error("conversation-tree.snapshot.failed", { message: error instanceof Error ? error.message : String(error) });
+      controller.snapshotFailed(error);
+    }
+  });
   controller.onRead = readTree;
   controller.onNavigate = navigateTree;
   return {
     mount(root, context) { return controller.mount(root, context); },
     update(context) { return controller.update(context); },
-    dispose() { return controller.dispose(); },
+    async dispose() { snapshotSubscription.dispose(); await controller.dispose(); },
   };
 }`,
   },

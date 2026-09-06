@@ -19,6 +19,10 @@ import { createShell } from "./shell.js";
 import { installStyles } from "./styles.js";
 import { renderFatal, renderView } from "./view.js";
 
+function isRecord(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
 export class ConversationTreeController {
   constructor(host, requests = {}) {
     this.host = host;
@@ -29,6 +33,8 @@ export class ConversationTreeController {
     this.state = null;
     this.disposed = false;
     this.lastContextRevision = null;
+    this.hostContext = undefined;
+    this.snapshot = undefined;
     this.themeSubscription = null;
     this.interactions = new ConversationTreeInteractions(this);
     this.actions = {
@@ -53,7 +59,34 @@ export class ConversationTreeController {
     }
   }
 
+  contextWithSnapshot(value) {
+    if (this.snapshot === undefined || !isRecord(value)) return value;
+    if (value.workspace !== undefined && !isRecord(value.workspace)) return value;
+    return {
+      ...value,
+      workspace: { ...(value.workspace ?? {}), session: this.snapshot?.session ?? null },
+    };
+  }
+
   updateContext(value) {
+    this.hostContext = value;
+    this.applyContext(this.contextWithSnapshot(value));
+  }
+
+  updateSnapshot(snapshot) {
+    this.snapshot = snapshot;
+    if (this.state) this.applyContext(this.contextWithSnapshot(this.hostContext));
+  }
+
+  snapshotFailed(value) {
+    this.snapshot = null;
+    if (!this.state) return;
+    this.applyContext(this.contextWithSnapshot(this.hostContext));
+    this.state.error = `读取对话树数据失败：${errorMessage(value)}`;
+    this.render();
+  }
+
+  applyContext(value) {
     const revision = contextRevision(value);
     if (revision === this.lastContextRevision) return;
     this.lastContextRevision = revision;
@@ -268,8 +301,10 @@ export class ConversationTreeController {
   async mount(nextRoot, initialContext) {
     this.root = nextRoot;
     installStyles();
-    const context = parseMountContext(initialContext);
-    this.lastContextRevision = contextRevision(initialContext);
+    this.hostContext = initialContext;
+    const mergedContext = this.contextWithSnapshot(initialContext);
+    const context = parseMountContext(mergedContext);
+    this.lastContextRevision = contextRevision(mergedContext);
     this.state = initialControllerState(context, sourceState(context));
     this.controls = createShell(this.root, this.actions);
     const mode = getComputedStyle(document.documentElement).getPropertyValue("--xsec-color-mode").trim();
