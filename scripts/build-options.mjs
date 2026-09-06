@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 
 export const outputPath = fileURLToPath(new URL(
-  "../plugins/com.xsec.workspace.conversation-tree/com.xsec.desktop/frontend/index.js",
+  "../com.xsec.desktop/frontend/index.js",
   import.meta.url,
 ));
 

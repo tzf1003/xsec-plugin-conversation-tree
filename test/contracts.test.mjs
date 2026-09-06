@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const pluginRoot = new URL("../plugins/com.xsec.workspace.conversation-tree/", import.meta.url);
+const pluginRoot = new URL("../", import.meta.url);
 const manifest = JSON.parse(await readFile(new URL("plugin.json", pluginRoot), "utf8"));
 const codexManifest = JSON.parse(await readFile(new URL(".codex-plugin/plugin.json", pluginRoot), "utf8"));
 
-test("dual manifests identify the same 1.3.3 release", () => {
+test("dual manifests identify the same 1.3.4 release", () => {
   assert.equal(manifest.name, codexManifest.name);
   assert.equal(manifest.version, codexManifest.version);
-  assert.equal(manifest.version, "1.3.3");
+  assert.equal(manifest.version, "1.3.4");
 });
 
 test("manifest commits a v2 single-esm frontend with exact tree methods", () => {

@@ -24,5 +24,5 @@ npm run build
 ```
 
 See
-[`OFFICIAL_PLUGIN_BRIDGE.md`](plugins/com.xsec.workspace.conversation-tree/OFFICIAL_PLUGIN_BRIDGE.md)
+[`OFFICIAL_PLUGIN_BRIDGE.md`](OFFICIAL_PLUGIN_BRIDGE.md)
 for the restored behavior and the current Desktop host boundary.
