@@ -63,7 +63,6 @@ function parseProjection(session) {
   if (!projection) return { tree: null, treeHash: null };
   const tree = validateTree(projection);
   const treeHash = optionalString(projection.treeHash, "tree_hash");
-  if (!treeHash) throw new Error("conversation_tree_missing_tree_hash");
   return { tree, treeHash };
 }
 
